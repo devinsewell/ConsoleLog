@@ -4,6 +4,8 @@
 // ----------------------------------------------------------
 import SwiftUI
 
+let consoleLogManager = ConsoleLogManager()
+
 // MARK: - Console Log Manager
 class ConsoleLogManager: ObservableObject {
     @Published var consoleLogs: [String] = []
@@ -18,8 +20,6 @@ class ConsoleLogManager: ObservableObject {
         if consoleLogs.count > MAX_CONSOLE_LOG_ITEMS { consoleLogs.removeFirst(consoleLogs.count - MAX_CONSOLE_LOG_ITEMS) }
     }
 }
-
-let consoleLogManager = ConsoleLogManager()
 
 // MARK: - Console Log View
 struct ConsoleLog: View {
@@ -70,8 +70,7 @@ struct ConsoleLog: View {
         HStack {
             Text("Console Log").font(.headline)
             Button(action: shareLogs) {
-                Image(systemName: "square.and.arrow.up")
-                    .foregroundColor(.green)
+                Image(systemName: "square.and.arrow.up").foregroundColor(.green)
             }
             Spacer()
             Button(action: { // Clear Console Log button
@@ -87,9 +86,7 @@ struct ConsoleLog: View {
             }
             .padding(.leading, 8)
             Text("Autoscroll").foregroundColor(Color(UIColor.tertiaryLabel))
-            Toggle("AutoScroll", isOn: $autoScrollEnabled)
-                .toggleStyle(SwitchToggleStyle(tint: .orange))
-                .labelsHidden()
+            Toggle("AutoScroll", isOn: $autoScrollEnabled).toggleStyle(SwitchToggleStyle(tint: .orange)).labelsHidden()
             Button(action: { isConsoleExpanded.toggle() }) {
                 Image(systemName: isConsoleExpanded ? "minus.circle" : "plus.circle").foregroundColor(.orange)
             }
@@ -107,9 +104,7 @@ struct ConsoleLog: View {
     
     // Scroll to latest Console Log Item if autoscrollEnabled
     private func scrollToLast(_ proxy: ScrollViewProxy) {
-        if let lastIndex = logs.indices.last {
-            proxy.scrollTo(lastIndex, anchor: .bottom)
-        }
+        logs.indices.last.map { proxy.scrollTo($0, anchor: .bottom) }
     }
     
     // Format Console Log Item Color
@@ -117,35 +112,29 @@ struct ConsoleLog: View {
         if log.contains("Error") { return .red }
         if log.contains("Success") { return .green }
         if log.contains("func") { return .blue }
-        if log.contains("DELETE") { return .orange }
+        if log.contains("DELETE") { return .red }
         return .primary
     }
     
     // Export and Share Console Log
     private func shareLogs() {
         guard !logs.isEmpty else { return print("No logs available to share.") }
-
-        // Combine logs into a single string
-        let logsText = "iConsoleLog -> Console Log Output:\n ------------------------------- \n\n" + logs.joined(separator: "\n\n")
-        // Add date and time to the filename -> Example: 20240102_142530
-        let dateFormatter: DateFormatter = { let df = DateFormatter(); df.dateFormat = "yyyyMMdd_HHmmss"; return df }()
-        let timestamp = dateFormatter.string(from: Date())
-        let tempFileURL = FileManager.default.temporaryDirectory.appendingPathComponent("iConsoleLog_\(timestamp).txt")
-
+        
+        let logsText = "LSConsoleLog -> Console Log Output:\n-------------------------------\n\n" + logs.joined(separator: "\n\n")
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .medium)
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: ":", with: "_")
+        let tempFileURL = FileManager.default.temporaryDirectory.appendingPathComponent("LSConsoleLog_\(timestamp).txt")
         do {
-            // Write logs to a temporary file
             try logsText.write(to: tempFileURL, atomically: true, encoding: .utf8)
-            
-            // Create and configure the share sheet
             let activityVC = UIActivityViewController(activityItems: [tempFileURL], applicationActivities: nil)
+            
             if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootVC = scene.keyWindow?.rootViewController {
-                // Ensure iPad compatibility with popover
-                if let popoverController = activityVC.popoverPresentationController {
-                    popoverController.sourceView = rootVC.view
-                    popoverController.sourceRect = CGRect(x: rootVC.view.bounds.midX, y: rootVC.view.bounds.midY, width: 0, height: 0
-                    )
-                    popoverController.permittedArrowDirections = []
+               let rootVC = scene.windows.first?.rootViewController {
+                if let popover = activityVC.popoverPresentationController {
+                    popover.sourceView = rootVC.view
+                    popover.sourceRect = CGRect(x: rootVC.view.bounds.midX, y: rootVC.view.bounds.midY, width: 0, height: 0)
+                    popover.permittedArrowDirections = []
                 }
                 rootVC.present(activityVC, animated: true)
             }
