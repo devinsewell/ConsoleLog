@@ -47,20 +47,14 @@ struct ConsoleLog: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
-                        .onChange(of: logs) { _, _ in if autoScrollEnabled { withAnimation { scrollToLast(proxy) } } }
+                        .onChange(of: logs) { if autoScrollEnabled { withAnimation { scrollToLast(proxy) } } }
                     }
                     .padding(.horizontal)
                 }
-                .alert(isPresented: $isAlertPresented) {
-                    Alert( // Confirm Clear Console Log
-                        title: Text(alertTitle),
-                        message: Text(alertMessage),
-                        primaryButton: .default(Text("Yes")) {
-                            confirmAction?()
-                        },
-                        secondaryButton: .cancel()
-                    )
-                }
+                .alert(alertTitle, isPresented: $isAlertPresented, actions: {
+                    Button("Yes", action: { confirmAction?() })
+                    Button("Cancel", role: .cancel, action: {})
+                }, message: { Text(alertMessage) })
             }
         }
         .background(Color.gray.opacity(0.2))
